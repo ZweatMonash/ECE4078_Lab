@@ -4,6 +4,8 @@
 from pynput.keyboard import Key, Listener, KeyCode
 import cv2
 import numpy as np
+import math
+from sympy import symbols, Eq, solve
 
 class Keyboard:
     # feel free to change the speed, or add keys to do so
@@ -23,6 +25,8 @@ class Keyboard:
 
     def on_press(self, key):
         print(key)
+        self.directions = [False for _ in range(4)]
+        self.signal_stop = False
         # use arrow keys to drive, space key to stop
         # feel free to add more keys
         if key == Key.up:
@@ -39,16 +43,39 @@ class Keyboard:
         self.send_drive_signal()
         
     def get_drive_signal(self):           
-        # translate the key presses into drive signals 
-        
+        # translate the key presses into drive signals
+
+
+        if self.signal_stop:
+            v = 0
+            w = 0  
+        elif self.directions[0]:
+            v = self.wheel_vel_forward
+            w =  0 
+        elif self.directions[1]:
+            v = -self.wheel_vel_forward
+            w = 0   
+        elif self.directions[2]:
+            v = 0
+            w =  self.wheel_vel_rotation
+        elif self.directions[3]:
+            v = 0
+            w = -self.wheel_vel_rotation   
+
         # compute drive_forward and drive_rotate using wheel_vel_forward and wheel_vel_rotation
-        # drive_forward = ???
-        # drive_rotate = ???
+        # drive_forward = wheel_vel_forward #v
+        # drive_rotate = wheel_vel_rotation #omega
+
+        vr, vl = symbols('vr vl')
+        eq1 = Eq(vr + vl - v)
+        eq2 = Eq(vr - vl - w)
+        solution = solve((eq1,eq2),(vr, vl))
 
         # translate drive_forward and drive_rotate into left_speed and right_speed
-        # left_speed = ???
-        # right_speed = ???
+        left_speed = solution[vl]
+        right_speed = solution[vr]
 
+        print("left v:", left_speed, "   right v:",right_speed )
         return left_speed, right_speed
     
     def send_drive_signal(self):
