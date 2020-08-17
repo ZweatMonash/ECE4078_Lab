@@ -1,6 +1,16 @@
 # How to set up your simulator environment or robot
 This document provides a step-by-step guide on setting up your simulator environment and connecting to the physcial PenguinPi robot.
 
+- [Install Simulator Locally (recommended)](#Install-Simulator-Locally-(recommended))
+    - [Install by importing my Ubuntu 18 VM image](#Install-by-importing-my-Ubuntu-18-VM-image)
+    - [Install from scratch in an empty Ubuntu VM](#Install-from-scratch-in-an-empty-Ubuntu-VM)
+    - [Speed up the Gazebo visualization](#Speed-up-the-Gazebo-visualization)
+- [Cloud-Based Simulator Environments](#Cloud-Based-Simulator-Environments)
+    - [ROS Development Studio](#ROS-Development-Studio)
+    - [AWS Remote Desktop](#AWS-Remote-Desktop)
+- [Running on the Physical Robot](#Running-on-the-Physical-Robot)
+- [Troubleshooting and known issues](#Troubleshooting-and-known-issues)
+
 ## Install Simulator Locally (recommended)
 ![Gazebo 11 inside Ubuntu 18 VM](https://github.com/tianleimin/ECE4078_Lab/blob/master/pics/GazeboVM.png?raw=true "Gazebo 11 inside Ubuntu 18 VM")
 
@@ -53,7 +63,7 @@ Install ROS packages for Gazebo 11: http://gazebosim.org/tutorials/?tut=ros_wrap
 ```
 sudo apt install ros-melodic-gazebo11-ros-pkgs 
 sudo apt install ros-melodic-gazebo11-ros-control
-sudo apt install rospkg python-catkin-tools python3-dev python3-catkin-pkg-modules python3-rospkg-modules python3-numpy python3-empy
+sudo apt install python-catkin-tools python3-dev python3-catkin-pkg-modules python3-rospkg-modules python3-numpy python3-empy
 ```
 
 Use catkin workspaces (melodic) to compile the environment: http://wiki.ros.org/catkin/Tutorials/create_a_workspace
@@ -98,6 +108,13 @@ source ~/catkin_ws/devel/setup.bash
 roslaunch penguinpi_gazebo penguinpi.launch
 ```
 
+### Speed up the Gazebo visualization
+To speed up your Gazebo visualization inside the VM, replace ```~/catkin_ws/src/penguinpi_gazebo/worlds/penguinpi.world``` with [penguinpi.world](penguinpi.world) and switch off the Firefox performance acceleration. This should boost Gazebo's FPS from about 2.5 to 20. 
+
+You may further boost the performance by increaseing the Base Memory (Virtualbox -> Settings -> System -> Motherboard).
+
+![Firefox performance restriction](https://github.com/tianleimin/ECE4078_Lab/blob/master/pics/FireFox_reduced.png?raw=true "Firefox performance restriction")
+
 ## Cloud-Based Simulator Environments
 
 ### ROS Development Studio
@@ -109,7 +126,7 @@ Get a free account for ROS Development studio: https://rds.theconstructsim.com/
 
 Fork the example project by clicking this link: http://www.rosject.io/l/15e9a94d/
 
-In "Tools -> shell", type the commands below to install required packages:
+In "Tools -> shell", type the commands below to install required packages (you'll have to do this everytime you restart RDS):
 
 ```
 sudo apt update
@@ -139,7 +156,30 @@ If you see PenguinPi in the simulator moves and the camera view pops up inside t
 Open "Tools -> IDE", navigate to the ECE4078 folder and start coding away. 
 
 ### AWS Remote Desktop
-TBA
+![NoMachine remote desktop](https://github.com/tianleimin/ECE4078_Lab/blob/master/pics/NoMachine.png?raw=true "NoMachine remote desktop")
+
+Download and install the remote desktop client [NoMachine](https://www.nomachine.com/) 
+
+Inside AWS Educate classroom:
+1. Launch [penguinpi-cfn.yaml](penguinpi-cfn.yaml) in CloudFormation: follow [the same instruction](https://lms.monash.edu/course/view.php?id=82455&section=4) ("Jupyter notebook in the cloud", page 5 to 7) as when you launch the Jupyter Notebook instances on AWS
+2. Choose your default VPC from the dropdown list (all Educate accounts should only have 1 VPC)
+3. When CloudFormation is finished, go to the "Outputs" tab and copy the IP address
+
+![AWS CloudFormation](https://github.com/tianleimin/ECE4078_Lab/blob/master/pics/AWS.png?raw=true "AWS CloudFormation")
+
+Inside NoMachine, connect to the remote desktop as follows:
+- Host IP: the IP generated in AWS
+- Protocol: NX
+- Port: 4000
+- Username: ubuntu
+- Password: robotsarefun!
+ 
+Once connected to the remote desktop, you can launch Gazebo/RViz by typing ```penguinpi``` in the terminal
+
+**Remember to stop the EC2 instance once you are done.**
+The server will stop itself automatically after 4 hours of inactivity (i.e., a user is not interacting with the session, no mouse or keyboard movements).  You can log off at 3 hours and log back in, which will reset the timer. After an instance is stopped, you can log back into AWS, go to EC2, and click start to bring it back up. 
+
+You should "stop" NOT "terminate" an instance. Stop is like hitting the power button and turning it off. You stop paying for the compute, but the underlying disk and server is still there for you to restart. If you hit "terminate", then it's like throwing away the server - you no longer have access to it or its data any more, so you would lose anything on the server that wasn't saved elsewhere, and would have to relaunch the CloudFormation template to rebuild another server.
 
 ## Running on the Physical Robot
 ![PenguinPi Robot](https://github.com/tianleimin/ECE4078_Lab/blob/master/pics/PenguinPi.png?raw=true "PenguinPi Robot")
@@ -161,38 +201,37 @@ You can upload files to the robot using the ```scp``` command:
 scp -r ./LOCALDIR pi@192.168.50.1:~/REMOTEDIR
 ```
 
-Run the testing script inside the ssh session to see the robot moving and view its camera input using the command: ```python3 test_camera_motors.py```
-(Note: the robot inside the simulator uses port number "40000", while the physical robot uses port number "8080". This port number is set in ```simulation_ws/src/scripts/server```, as well as the Notebook and python3 scripts.)
+Alternatively, if your robot and your PC are on the same network, you can access it without ssh. You just need to find out the IP address of your robot, which should share the same first 8 digits of your PC's IPv4 address and only differs in the last 2 digits. Now if you replace "localhost:40000" with "RobotIP:8080" in your codes and run the Python scripts from your PC, the Python scripts should be executed directly on your robot.
+
+Run the testing script to see the robot moving and view its camera input using the command: ```python3 test_camera_motors.py```
 
 When you are done with the robot, inside the ssh session run ```sudo halt``` to shut down the robot safely. Once its lights stop flashing you can toggle the power switch. Don't toggle the switch directly to "hard" shut it down.
 
 You can connect an external screen, keyboard, and mouse to the robot, then switch it on and use it as a Rasberry Pi. Inside the Rasberry Pi interface, you can install python packages onboard the robot by running pip in the terminal, e.g., ```python3 -m pip install pynput```. You can also install packages inside the ssh session if your PenguinPi has internet connection (you can set the internet connection up in the Rasberry Pi interface).
 
 ## Troubleshooting and known issues
-The same python scripts should run both in simulator and on the physical robot. The only difference is that the robot inside the simulator uses port number "40000", while the physical robot uses port number "8080".
+- The same python scripts should run both in simulator and on the physical robot. The only difference is that the robot inside the simulator uses port number "40000", while the physical robot uses port number "8080".
 
-If you got a connection error trying to view PenguinPi web interface in your local VM, after you have cloned https://bitbucket.org/cirrusrobotics/penguinpi_gazebo/src/master/ to your local VM, inside ```catkin_ws/src/penguinpi_gazebo/scripts```, replace lines 399 to end with the following codes:
+- Virtual box not importing the image properly (not able to import and open the image at all): if the error is related to E_INVALIDARG, check if your virtualbox has been installed in C:\ (instead of D:\ or any other drive).
 
-```
-serverport = 40000
-# app.jinja_env.lstrip_blocks = True
-# app.jinja_env.trim_blocks = True
-# app.jinja_env.line_statement_prefix = '#'
-# app.run('0.0.0.0', serverport, debug=True)
-http_server = WSGIServer(('', serverport), app)
-http_server.serve_forever()
-```
+- Don't tick the 3D acceleration option in Virtualbox as it might cause the VM to black-screen or crash with an out-of-memory error.
 
-To reduce CPU usage, you can reduce the default real-time-update rate in Gazebo from 1kHz to 100Hz by adding the following codes in ```catkin_ws/src/penguinpi_gazebo/worlds/penguinpi.world``` (above the line ```</world>```):
+- Dual-booting machines: recommend to follow the instructions on [Install from scratch in an empty Ubuntu VM](Install from scratch in an empty Ubuntu VM) or to download a VM over your existing linux machine.
 
-```
-    <physics name='default_physics' default='0' type='ode'>
-      <max_step_size>0.005</max_step_size>
-      <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>100</real_time_update_rate>
-    </physics>
-```
+- Razer graphic cards might have issues with the VM/gazebo/RViz (crashes without apparent error messages).
 
-For Python3, ROS, Open-CV compatability issues: https://medium.com/@beta_b0t/how-to-setup-ros-with-python-3-44a69ca36674
+- If you got a connection error trying to view PenguinPi web interface in your local VM, after you have cloned https://bitbucket.org/cirrusrobotics/penguinpi_gazebo/src/master/ to your local VM, inside ```catkin_ws/src/penguinpi_gazebo/scripts/server``` (this is the web server that establishes the connection between your python scripts and the simulated / physical robot), replace lines 399 to end with the following codes:
 
-The PenguinPi robot can be broken in SO MANY WAYS... So far I have had the wheel connection wire snapping off (need soldering iron to fix), the tail of the frame snapping off during shippment (need to take the whole thing apart and reassamble with a new frame), the camera connection ribbon broken (just get a replacement robot), so please be gentle with it...
+    ```
+    serverport = 40000
+    # app.jinja_env.lstrip_blocks = True
+    # app.jinja_env.trim_blocks = True
+    # app.jinja_env.line_statement_prefix = '#'
+    # app.run('0.0.0.0', serverport, debug=True)
+    http_server = WSGIServer(('', serverport), app)
+    http_server.serve_forever()
+    ```
+
+- For Python3, ROS, Open-CV compatability issues: https://medium.com/@beta_b0t/how-to-setup-ros-with-python-3-44a69ca36674 (using Python virtual environment or python2/3 mixed seems to create issues for OpenCV and CV-bridge)
+
+- The PenguinPi robot can be broken in SO MANY WAYS... So far I have had the wheel connection wire snapping off (need soldering iron to fix), the tail of the frame snapping off during shippment (need to take the whole thing apart and reassamble with a new frame), the camera connection ribbon broken (just get a replacement robot), so please be gentle with it...
