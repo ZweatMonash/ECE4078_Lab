@@ -1,11 +1,14 @@
 # teleoperate the robot through keyboard control
 # getting-started code
 
-from pynput.keyboard import Key, Listener, KeyCode
+import math
+
 import cv2
 import numpy as np
-import math
-from sympy import symbols, Eq, solve
+
+from pynput.keyboard import Key, KeyCode, Listener
+from sympy import Eq, solve, symbols
+
 
 class Keyboard:
     # feel free to change the speed, or add keys to do so
@@ -15,7 +18,8 @@ class Keyboard:
     def __init__(self, ppi=None):
         # storage for key presses
         self.directions = [False for _ in range(4)]
-        self.signal_stop = False 
+        self.signal_stop = False
+        self.toggle = True #when false change forward_vel, true changes rotation_vel 
 
         # connection to PenguinPi robot
         self.ppi = ppi
@@ -39,12 +43,26 @@ class Keyboard:
             self.directions[3] = True
         elif key == Key.space:
             self.signal_stop = True
+        elif key == KeyCode.from_char('i'):
+            self.toggle = not self.toggle
+        elif key == KeyCode.from_char('o'):
+            if(self.toggle):
+                self.wheel_vel_forward -= 10  
+            else:
+                self.wheel_vel_rotation -= 10
+        elif key == KeyCode.from_char('p'):
+            if(self.toggle):
+                self.wheel_vel_forward += 10 
+            else:
+                self.wheel_vel_rotation += 10
+
 
         self.send_drive_signal()
         
     def get_drive_signal(self):           
         # translate the key presses into drive signals
-
+        v = 0
+        w = 0
 
         if self.signal_stop:
             v = 0
@@ -105,6 +123,7 @@ if __name__ == "__main__":
         font_col = (255, 255, 255)
         line_type = 2
 
+
         # get velocity of each wheel
         wheel_vels = keyboard_control.latest_drive_signal();
         L_Wvel = wheel_vels[0]
@@ -117,9 +136,23 @@ if __name__ == "__main__":
         # feel free to change the resolution
         resized = cv2.resize(curr, (960, 720), interpolation = cv2.INTER_AREA)
 
+        key_symbols = ['forward','backward','left','right','stop']
+        keyboard_states = np.array(keyboard_control.directions)
+        key_pressed = np.where(keyboard_states)[0]
+        key_display = 'stop'
+        if not (key_pressed.size == 0) :
+            key_display = key_symbols[key_pressed.item()]
+        else:
+            key_display = key_symbols[4]
         # feel free to add more GUI texts
         cv2.putText(resized, 'PenguinPi', (15, 50), font, font_scale, font_col, line_type)
-
+        cv2.putText(resized, key_display, (15, 100), font, font_scale, font_col, line_type)
+        cv2.putText(resized, "[vl,vr] : "+str(keyboard_control.wheel_vels), (15, 150), font, font_scale, font_col, line_type)
+        cv2.putText(resized, "[linear,angular] : "+str([keyboard_control.wheel_vel_forward, keyboard_control.wheel_vel_rotation] ), (15, 200), font, font_scale, font_col, line_type)
+        cv2.putText(resized, "toggle : " + "linear" if(keyboard_control.toggle) else "angular", (15, 250), font, font_scale, font_col, line_type)
+        cv2.putText(resized, 'i: toggle linear/angular speed adjust' , (15, 570), font, font_scale, font_col, line_type)
+        cv2.putText(resized, 'o: - speed by 10' , (15, 620), font, font_scale, font_col, line_type)
+        cv2.putText(resized, 'p: + speed by 10' , (15, 670), font, font_scale, font_col, line_type)
         cv2.imshow('video', resized)
         cv2.waitKey(1)
 
